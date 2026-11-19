@@ -58,6 +58,10 @@ body.shot-cover .stage {
   box-shadow: none;
 }
 
+body.shot-cover .stage::before {
+  display: none;
+}
+
 /* Header */
 header {
   background: linear-gradient(135deg, #13131c 0%, #1a1025 100%);
@@ -116,10 +120,20 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 10px;
   background: radial-gradient(circle at center, #181824 0%, #0c0c12 100%);
   position: relative;
   overflow: auto;
+}
+
+.stage::before {
+  content: '';
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(5, 217, 232, 0.12) 0%, rgba(255, 42, 109, 0.06) 50%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .stage.drop-ready {
@@ -129,7 +143,8 @@ h1 {
 
 .canvas-wrapper {
   position: relative;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(5, 217, 232, 0.1);
+  z-index: 1;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 50px rgba(5, 217, 232, 0.2);
   border-radius: 4px;
   overflow: hidden;
   cursor: grab;
