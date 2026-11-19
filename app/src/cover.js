@@ -3,36 +3,38 @@
 export const PANEL_LAYOUTS = {
   poster: (w, h) => {
     const isPortrait = h > w;
-    const heroH = Math.round(h * (isPortrait ? 0.38 : 0.46));
-    const pad = Math.round(w * 0.015);
-    const bottomH = h - heroH - pad * 3;
-    const bottomY = heroH + pad * 2;
-    const bottomW = Math.round((w - pad * 4) / 3);
+    const heroH = Math.round(h * (isPortrait ? 0.38 : 0.50));
+    const bottomH = h - heroH;
+    const x0 = 0;
+    const x1 = Math.round(w / 3);
+    const x2 = Math.round((2 * w) / 3);
+    const x3 = w;
 
     return [
       // Hero top panel
-      { x: pad, y: pad, w: w - pad * 2, h: heroH },
+      { x: 0, y: 0, w: w, h: heroH },
       // Three bottom panels
-      { x: pad, y: bottomY, w: bottomW, h: bottomH },
-      { x: pad * 2 + bottomW, y: bottomY, w: bottomW, h: bottomH },
-      { x: pad * 3 + bottomW * 2, y: bottomY, w: w - pad * 3 - bottomW * 2, h: bottomH }
+      { x: x0, y: heroH, w: x1 - x0, h: bottomH },
+      { x: x1, y: heroH, w: x2 - x1, h: bottomH },
+      { x: x2, y: heroH, w: x3 - x2, h: bottomH }
     ];
   },
 
   six: (w, h) => {
-    const pad = Math.round(w * 0.012);
     const cols = 2;
     const rows = 3;
-    const panelW = Math.round((w - pad * (cols + 1)) / cols);
-    const panelH = Math.round((h - pad * (rows + 1)) / rows);
     const panels = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        const x0 = Math.round((c * w) / cols);
+        const x1 = Math.round(((c + 1) * w) / cols);
+        const y0 = Math.round((r * h) / rows);
+        const y1 = Math.round(((r + 1) * h) / rows);
         panels.push({
-          x: pad + c * (panelW + pad),
-          y: pad + r * (panelH + pad),
-          w: c === cols - 1 ? w - (pad + c * (panelW + pad)) - pad : panelW,
-          h: r === rows - 1 ? h - (pad + r * (panelH + pad)) - pad : panelH
+          x: x0,
+          y: y0,
+          w: x1 - x0,
+          h: y1 - y0
         });
       }
     }
@@ -40,79 +42,88 @@ export const PANEL_LAYOUTS = {
   },
 
   duo: (w, h) => {
-    const pad = Math.round(w * 0.015);
     const isPortrait = h >= w;
     if (isPortrait) {
-      const halfH = Math.round((h - pad * 3) / 2);
+      const midY = Math.round(h / 2);
       return [
-        { x: pad, y: pad, w: w - pad * 2, h: halfH },
-        { x: pad, y: pad * 2 + halfH, w: w - pad * 2, h: h - halfH - pad * 3 }
+        { x: 0, y: 0, w: w, h: midY },
+        { x: 0, y: midY, w: w, h: h - midY }
       ];
     } else {
-      const halfW = Math.round((w - pad * 3) / 2);
+      const midX = Math.round(w / 2);
       return [
-        { x: pad, y: pad, w: halfW, h: h - pad * 2 },
-        { x: pad * 2 + halfW, y: pad, w: w - halfW - pad * 3, h: h - pad * 2 }
+        { x: 0, y: 0, w: midX, h: h },
+        { x: midX, y: 0, w: w - midX, h: h }
       ];
     }
   },
 
   quad: (w, h) => {
-    const pad = Math.round(w * 0.015);
-    const halfW = Math.round((w - pad * 3) / 2);
-    const halfH = Math.round((h - pad * 3) / 2);
-    return [
-      { x: pad, y: pad, w: halfW, h: halfH },
-      { x: pad * 2 + halfW, y: pad, w: w - halfW - pad * 3, h: halfH },
-      { x: pad, y: pad * 2 + halfH, w: halfW, h: h - halfH - pad * 3 },
-      { x: pad * 2 + halfW, y: pad * 2 + halfH, w: w - halfW - pad * 3, h: h - halfH - pad * 3 }
-    ];
+    const cols = 2;
+    const rows = 2;
+    const panels = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x0 = Math.round((c * w) / cols);
+        const x1 = Math.round(((c + 1) * w) / cols);
+        const y0 = Math.round((r * h) / rows);
+        const y1 = Math.round(((r + 1) * h) / rows);
+        panels.push({
+          x: x0,
+          y: y0,
+          w: x1 - x0,
+          h: y1 - y0
+        });
+      }
+    }
+    return panels;
   }
 };
 
 export const GRADE_RECIPES = {
   sunset: {
     name: 'Sunset Vice',
-    filter: 'saturate(1.3) contrast(1.15) brightness(1.05)',
+    filter: 'saturate(1.06) contrast(1.04) brightness(1.0)',
     overlay: (ctx, w, h) => {
       const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, 'rgba(255, 42, 109, 0.25)'); // Magenta top
-      grad.addColorStop(0.5, 'rgba(255, 183, 3, 0.1)');   // Golden middle
-      grad.addColorStop(1, 'rgba(5, 217, 232, 0.35)');    // Cyan bottom
+      grad.addColorStop(0, 'rgba(255, 90, 50, 0.16)');
+      grad.addColorStop(0.18, 'rgba(255, 90, 50, 0)');
+      grad.addColorStop(0.88, 'rgba(255, 90, 50, 0)');
+      grad.addColorStop(1, 'rgba(255, 183, 3, 0.16)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
     }
   },
   neon: {
     name: 'Neon Nights',
-    filter: 'saturate(1.5) contrast(1.25) brightness(0.95)',
+    filter: 'saturate(1.12) contrast(1.05) brightness(1.0)',
     overlay: (ctx, w, h) => {
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, 'rgba(5, 217, 232, 0.3)');
-      grad.addColorStop(0.5, 'rgba(131, 56, 236, 0.2)');
-      grad.addColorStop(1, 'rgba(255, 0, 110, 0.35)');
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(5, 217, 232, 0.16)');
+      grad.addColorStop(0.18, 'rgba(5, 217, 232, 0)');
+      grad.addColorStop(0.88, 'rgba(5, 217, 232, 0)');
+      grad.addColorStop(1, 'rgba(255, 0, 110, 0.16)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
     }
   },
   golden: {
     name: 'Golden Hour',
-    filter: 'saturate(1.2) contrast(1.1) brightness(1.1) sepia(0.2)',
+    filter: 'saturate(1.08) contrast(1.04) brightness(1.05)',
     overlay: (ctx, w, h) => {
-      const grad = ctx.createRadialGradient(w * 0.5, h * 0.3, w * 0.1, w * 0.5, h * 0.5, w * 0.8);
-      grad.addColorStop(0, 'rgba(255, 200, 50, 0.3)');
-      grad.addColorStop(1, 'rgba(180, 40, 100, 0.25)');
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(255, 200, 50, 0.16)');
+      grad.addColorStop(0.18, 'rgba(255, 200, 50, 0)');
+      grad.addColorStop(0.88, 'rgba(255, 200, 50, 0)');
+      grad.addColorStop(1, 'rgba(255, 140, 0, 0.16)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
     }
   },
   raw: {
     name: 'Raw Print',
-    filter: 'saturate(1.05) contrast(1.05) brightness(1.0)',
-    overlay: (ctx, w, h) => {
-      ctx.fillStyle = 'rgba(20, 15, 30, 0.08)';
-      ctx.fillRect(0, 0, w, h);
-    }
+    filter: 'none',
+    overlay: () => {}
   }
 };
 
@@ -169,7 +180,7 @@ export function coverFitSourceRect(imgW, imgH, panelW, panelH, zoom = 1, panX = 
   return { sx: finalSx, sy: finalSy, sw: zoomedW, sh: zoomedH };
 }
 
-export function drawPosterLettering(ctx, w, h, title, subtitle) {
+export function drawPosterLettering(ctx, w, h, title, subtitle, gradeKey = 'sunset') {
   if (!title && !subtitle) return;
 
   ctx.save();
@@ -185,14 +196,14 @@ export function drawPosterLettering(ctx, w, h, title, subtitle) {
   ctx.fillRect(0, bannerY, w, bannerH);
 
   // Title styling in Anton
-  const maxTextW = w * 0.92;
-  let fontSize = Math.round(h * 0.085);
+  const maxTextW = w * 0.94;
+  let fontSize = Math.round(h * 0.12);
   ctx.font = `${fontSize}px "Anton", sans-serif`;
 
   const cleanTitle = (title || '').toUpperCase();
   let metrics = ctx.measureText(cleanTitle);
 
-  // Auto-shrink to fit 92% width
+  // Auto-shrink to fit 94% width
   while (metrics.width > maxTextW && fontSize > 20) {
     fontSize -= 2;
     ctx.font = `${fontSize}px "Anton", sans-serif`;
@@ -206,41 +217,78 @@ export function drawPosterLettering(ctx, w, h, title, subtitle) {
   ctx.textBaseline = 'middle';
 
   // Hard shadow & outline
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetX = 4;
-  ctx.shadowOffsetY = 4;
+  ctx.shadowColor = 'rgba(0, 0, 0, 1)';
+  ctx.shadowBlur = 0;
+  const shadowOffset = Math.max(1, Math.round(fontSize / 20));
+  ctx.shadowOffsetX = shadowOffset;
+  ctx.shadowOffsetY = shadowOffset;
 
-  ctx.lineWidth = Math.max(3, Math.round(fontSize * 0.06));
+  ctx.lineWidth = Math.max(3, Math.round(fontSize / 14));
   ctx.strokeStyle = '#000000';
   ctx.strokeText(cleanTitle, titleX, titleY);
 
   ctx.fillStyle = '#ffffff';
   ctx.fillText(cleanTitle, titleX, titleY);
 
-  // Subtitle
-  if (subtitle) {
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+  // Reset shadow for subtitle plate
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 
+  // Subtitle on solid black plate with accent bar
+  if (subtitle) {
     const subFontSize = Math.max(12, Math.round(fontSize * 0.32));
-    // Letterspaced effect simulation or CSS letterspacing equivalent
     ctx.font = `${subFontSize}px "Anton", sans-serif`;
     const cleanSub = (subtitle || '').toUpperCase();
-    const subY = titleY + Math.round(fontSize * 0.55);
+    const subY = titleY + Math.round(fontSize * 0.58);
 
-    ctx.fillStyle = '#05d9e8'; // Neon cyan accent
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(2, Math.round(subFontSize * 0.08));
-    ctx.strokeText(cleanSub, titleX, subY);
-    ctx.fillText(cleanSub, titleX, subY);
+    // Letterspaced effect simulation
+    const letterSpacing = Math.round(subFontSize * 0.12);
+    let totalTextW = 0;
+    for (let i = 0; i < cleanSub.length; i++) {
+      totalTextW += ctx.measureText(cleanSub[i]).width + (i < cleanSub.length - 1 ? letterSpacing : 0);
+    }
+
+    const padX = Math.round(subFontSize * 0.6);
+    const padY = Math.round(subFontSize * 0.32);
+    const plateW = totalTextW + padX * 2 + 4; // +4 for accent bar on left edge
+    const plateH = subFontSize + padY * 2;
+    const plateX = titleX - plateW / 2;
+    const plateY = subY - plateH / 2;
+
+    // Solid black plate
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(plateX, plateY, plateW, plateH);
+
+    // 4px accent-colour bar on plate's left edge
+    const accentColors = {
+      sunset: '#ff9e3d',
+      neon: '#22d3ee',
+      golden: '#fbbf24',
+      raw: '#e5e7eb'
+    };
+    const accentColor = accentColors[gradeKey] || '#ff9e3d';
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(plateX, plateY, 4, plateH);
+
+    // Subtitle text in white letterspaced uppercase
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    let curX = plateX + 4 + padX;
+    for (let i = 0; i < cleanSub.length; i++) {
+      const char = cleanSub[i];
+      ctx.fillText(char, curX, subY);
+      curX += ctx.measureText(char).width + letterSpacing;
+    }
   }
 
   ctx.restore();
 }
 
-export function addFilmGrain(ctx, w, h, intensity = 0.04) {
+export function addFilmGrain(ctx, w, h, intensity = 0.02) {
   ctx.save();
   const imgData = ctx.getImageData(0, 0, w, h);
   const data = imgData.data;
@@ -283,15 +331,6 @@ export function drawCover(ctx, state) {
       ctx.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, w, h);
     }
     ctx.restore();
-
-    // White keylines over panel borders
-    ctx.save();
-    ctx.lineWidth = Math.max(2, Math.round(w * 0.008));
-    ctx.strokeStyle = '#ffffff';
-    for (const panel of panels) {
-      ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
-    }
-    ctx.restore();
   } else {
     // Normal panel mode
     const recipe = GRADE_RECIPES[state.grade] || GRADE_RECIPES.sunset;
@@ -329,28 +368,34 @@ export function drawCover(ctx, state) {
         );
       }
       ctx.restore();
-
-      // Panel border keyline (clean white border)
-      ctx.save();
-      ctx.lineWidth = Math.max(2, Math.round(w * 0.004));
-      ctx.strokeStyle = '#ffffff';
-      ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
-      ctx.restore();
     });
   }
 
-  // 2. Apply colour grade overlay
+  // Keylines (white panel separators bold, scaling with canvas width: ~0.6% canvas width, min 4px)
+  ctx.save();
+  const keylineWidth = Math.max(4, Math.round(w * 0.006));
+  ctx.lineWidth = keylineWidth;
+  ctx.strokeStyle = '#ffffff';
+  for (const panel of panels) {
+    ctx.strokeRect(panel.x, panel.y, panel.w, panel.h);
+  }
+  ctx.restore();
+
+  // 2. Apply colour grade overlay (Edge grade)
   applyColourGrade(ctx, w, h, state.grade);
 
-  // 3. Vignette
+  // Film grain (half strength: 0.02)
+  addFilmGrain(ctx, w, h, 0.02);
+
+  // 3. Vignette (lightened to peak alpha ~0.18 at corners)
   ctx.save();
   const vig = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.85);
   vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  vig.addColorStop(1, 'rgba(0, 0, 0, 0.45)');
+  vig.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
   // 4. Poster Lettering (Title & Subtitle)
-  drawPosterLettering(ctx, w, h, state.title, state.subtitle);
+  drawPosterLettering(ctx, w, h, state.title, state.subtitle, state.grade);
 }
