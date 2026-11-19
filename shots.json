@@ -1,0 +1,26 @@
+[
+  {
+    "file": "1-cover.jpg",
+    "url": "index.html?shot=cover&size=1920x1080&layout=poster&grade=sunset&caption=VICE+HEAT",
+    "width": 1280,
+    "height": 720
+  },
+  {
+    "file": "2-editor.jpg",
+    "url": "index.html?shot=editor",
+    "width": 1280,
+    "height": 720
+  },
+  {
+    "file": "3-cover.jpg",
+    "url": "index.html?shot=cover&size=1080x1350&layout=poster&grade=neon&caption=NEON+REIGN",
+    "width": 1024,
+    "height": 1280
+  },
+  {
+    "file": "4-cover.jpg",
+    "url": "index.html?shot=cover&size=1080x1080&layout=duo&grade=golden&caption=GOLDEN+HOUR",
+    "width": 1080,
+    "height": 1080
+  }
+]
