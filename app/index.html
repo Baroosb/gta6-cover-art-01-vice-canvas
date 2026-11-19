@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vice Canvas — GTA-Style Cover Art Maker</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <div class="logo-area">
+      <h1>Vice Canvas</h1>
+      <span class="tagline">GTA-Style Cover Art Maker</span>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <main class="stage">
+      <div class="panel-overlay-hint" id="panel-hint">Selected: Hero Panel (Drag to pan, Scroll to zoom)</div>
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="cover-canvas" width="1080" height="1350"></canvas>
+      </div>
+    </main>
+
+    <aside class="control-panel">
+      <!-- Photos Section -->
+      <section class="control-section">
+        <h3>Photos</h3>
+        <div class="photos-toolbar">
+          <label for="photo-input" class="btn-upload">+ Upload Photos</label>
+          <input type="file" id="photo-input" accept="image/*" multiple>
+        </div>
+        <div class="thumbnails-grid" id="thumbnails"></div>
+      </section>
+
+      <!-- Layout Section -->
+      <section class="control-section">
+        <h3>Layout</h3>
+        <div class="btn-group-4" id="layout-buttons">
+          <button class="ctrl-btn active" data-layout="poster">Poster</button>
+          <button class="ctrl-btn" data-layout="six">6-Grid</button>
+          <button class="ctrl-btn" data-layout="duo">Duo</button>
+          <button class="ctrl-btn" data-layout="quad">Quad</button>
+        </div>
+      </section>
+
+      <!-- Colour Grade Section -->
+      <section class="control-section">
+        <h3>Colour Grade</h3>
+        <div class="btn-group" id="grade-buttons">
+          <button class="ctrl-btn active" data-grade="sunset">Sunset Vice</button>
+          <button class="ctrl-btn" data-grade="neon">Neon Nights</button>
+          <button class="ctrl-btn" data-grade="golden">Golden Hour</button>
+          <button class="ctrl-btn" data-grade="raw">Raw Print</button>
+        </div>
+      </section>
+
+      <!-- Captions Section -->
+      <section class="control-section">
+        <h3>Captions</h3>
+        <div class="text-inputs">
+          <input type="text" id="title-input" class="input-field" placeholder="TITLE (e.g. VICE HEAT)" value="VICE HEAT">
+          <input type="text" id="subtitle-input" class="input-field" placeholder="SUBTITLE (e.g. ONE CITY, FOUR STORIES)" value="ONE CITY, FOUR STORIES">
+        </div>
+      </section>
+
+      <!-- Spread Mode & Zoom -->
+      <section class="control-section">
+        <h3>Composition & Zoom</h3>
+        <div class="toggle-row">
+          <span class="toggle-label">Spread Mode (Full Image)</span>
+          <label class="switch">
+            <input type="checkbox" id="spread-toggle">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+        <div class="slider-group" style="margin-top: 10px;">
+          <div class="slider-label">
+            <span>Panel Zoom</span>
+            <span id="zoom-value">1.0x</span>
+          </div>
+          <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
+        </div>
+      </section>
+
+      <!-- Canvas Size Section -->
+      <section class="control-section">
+        <h3>Canvas Size</h3>
+        <div class="btn-group" id="size-buttons">
+          <button class="ctrl-btn" data-w="1080" data-h="1080">Square (1:1)</button>
+          <button class="ctrl-btn active" data-w="1080" data-h="1350">Portrait (4:5)</button>
+          <button class="ctrl-btn" data-w="1920" data-h="1080">Landscape (16:9)</button>
+        </div>
+      </section>
+
+      <!-- Export Section -->
+      <button class="btn-export" id="export-btn">Export PNG Cover</button>
+    </aside>
+  </div>
+
+  <div id="status">Ready — Click canvas panels to select, drag to pan, wheel to zoom.</div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
