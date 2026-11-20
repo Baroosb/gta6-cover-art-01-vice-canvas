@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vice Canvas — GTA-Style Cover Art Maker</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -36,11 +37,14 @@
       <!-- Layout Section -->
       <section class="control-section">
         <h3>Layout</h3>
-        <div class="btn-group-4" id="layout-buttons">
+        <div class="btn-group-3" id="layout-buttons">
           <button class="ctrl-btn active" data-layout="poster">Poster</button>
           <button class="ctrl-btn" data-layout="six">6-Grid</button>
           <button class="ctrl-btn" data-layout="duo">Duo</button>
           <button class="ctrl-btn" data-layout="quad">Quad</button>
+          <button class="ctrl-btn" data-layout="trio">Trio</button>
+          <button class="ctrl-btn" data-layout="split">Split</button>
+          <button class="ctrl-btn" data-layout="collage8">Collage-8</button>
         </div>
       </section>
 
@@ -52,6 +56,9 @@
           <button class="ctrl-btn" data-grade="neon">Neon Nights</button>
           <button class="ctrl-btn" data-grade="golden">Golden Hour</button>
           <button class="ctrl-btn" data-grade="raw">Raw Print</button>
+          <button class="ctrl-btn" data-grade="midnight">Midnight Palms</button>
+          <button class="ctrl-btn" data-grade="chromeheat">Chrome Heat</button>
+          <button class="ctrl-btn" data-grade="vapor">Vapor Dawn</button>
         </div>
       </section>
 
@@ -62,6 +69,11 @@
           <input type="text" id="title-input" class="input-field" placeholder="TITLE (e.g. VICE HEAT)" value="VICE HEAT">
           <input type="text" id="subtitle-input" class="input-field" placeholder="SUBTITLE (e.g. ONE CITY, FOUR STORIES)" value="ONE CITY, FOUR STORIES">
           <input type="text" id="accent-input" class="input-field" placeholder="SCRIPT ACCENT (e.g. Sunset City)" value="Sunset City">
+          <select id="caption-fx" class="input-field" aria-label="Caption effect">
+            <option value="none" selected>Caption FX: None</option>
+            <option value="outline">Caption FX: Outline</option>
+            <option value="glow">Caption FX: Glow</option>
+          </select>
         </div>
       </section>
 

@@ -310,6 +310,22 @@ body:not(.shot-cover) #cover-canvas {
   gap: 6px;
 }
 
+.btn-group-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+select.input-field {
+  cursor: pointer;
+  width: 100%;
+}
+
+select.input-field option {
+  background: #0d0d14;
+  color: var(--text-main);
+}
+
 .ctrl-btn {
   background: #1a1a26;
   color: var(--text-main);
