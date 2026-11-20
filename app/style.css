@@ -30,6 +30,11 @@ body {
   color: var(--text-main);
   font-family: var(--font-sans);
   min-height: 100vh;
+  /* Definite height so the editor grid below is bounded by the viewport:
+     the stage and the scrolling control panel share what the header
+     leaves, instead of the page growing past the screen. */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -101,11 +106,15 @@ h1 {
   display: grid;
   grid-template-columns: 1fr 380px;
   flex: 1;
-  height: calc(100vh - 65px);
+  min-height: 0;
   overflow: hidden;
 }
 
 @media (max-width: 1024px) {
+  body {
+    height: auto;
+  }
+
   .app-container {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
@@ -120,6 +129,7 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 0;
   padding: 10px;
   background: radial-gradient(circle at center, #181824 0%, #0c0c12 100%);
   position: relative;
@@ -162,10 +172,20 @@ canvas {
   touch-action: none;
 }
 
+/* Editor mode: keep the whole cover preview inside the stage. When the
+   stage is shorter than the cover (e.g. a portrait cover on a landscape
+   screen), scale the canvas down with its aspect kept instead of letting
+   the lower panels spill out of view. Shot mode is exempt: there the
+   canvas must fill the frame exactly. */
+body:not(.shot-cover) #cover-canvas {
+  max-height: calc(100vh - 104px);
+}
+
 .panel-overlay-hint {
   position: absolute;
   top: 12px;
   left: 12px;
+  z-index: 2;
   background: rgba(9, 9, 14, 0.85);
   border: 1px solid var(--accent-cyan);
   padding: 6px 12px;
@@ -187,6 +207,7 @@ canvas {
   gap: 20px;
   overflow-y: auto;
   max-height: 100%;
+  min-height: 0;
 }
 
 .control-section {
