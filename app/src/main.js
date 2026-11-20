@@ -29,6 +29,10 @@ const state = {
   spreadPanY: 0,
   title: 'VICE HEAT',
   subtitle: 'ONE CITY, FOUR STORIES',
+  accent: 'Sunset City',
+  breakout: true,
+  furniture: true,
+  tags: null,
   width: 1080,
   height: 1350
 };
@@ -42,6 +46,9 @@ const gradeButtons = document.querySelectorAll('#grade-buttons .ctrl-btn');
 const sizeButtons = document.querySelectorAll('#size-buttons .ctrl-btn');
 const titleInput = document.getElementById('title-input');
 const subtitleInput = document.getElementById('subtitle-input');
+const accentInput = document.getElementById('accent-input');
+const breakoutToggle = document.getElementById('breakout-toggle');
+const furnitureToggle = document.getElementById('furniture-toggle');
 const spreadToggle = document.getElementById('spread-toggle');
 const zoomSlider = document.getElementById('zoom-slider');
 const zoomValueLabel = document.getElementById('zoom-value');
@@ -313,6 +320,29 @@ if (subtitleInput) {
   });
 }
 
+if (accentInput) {
+  accentInput.addEventListener('input', () => {
+    state.accent = accentInput.value;
+    render();
+  });
+}
+
+if (breakoutToggle) {
+  breakoutToggle.addEventListener('change', () => {
+    state.breakout = breakoutToggle.checked;
+    render();
+    setStatus(state.breakout ? 'Breakout hero panel on' : 'Breakout hero panel off');
+  });
+}
+
+if (furnitureToggle) {
+  furnitureToggle.addEventListener('change', () => {
+    state.furniture = furnitureToggle.checked;
+    render();
+    setStatus(state.furniture ? 'Seal & credits block on' : 'Seal & credits block off');
+  });
+}
+
 if (spreadToggle) {
   spreadToggle.addEventListener('change', () => {
     state.spread = spreadToggle.checked;
@@ -415,6 +445,37 @@ async function initFromQuery() {
     if (subtitleInput) subtitleInput.value = subParam;
   }
 
+  // Script accent word (empty string hides it)
+  const accentParam = params.get('accent');
+  if (accentParam !== null) {
+    state.accent = accentParam;
+    if (accentInput) accentInput.value = accentParam;
+  }
+
+  // Poster style switches: breakout=0 / furniture=0 turn them off
+  if (params.get('breakout') === '0') {
+    state.breakout = false;
+    if (breakoutToggle) breakoutToggle.checked = false;
+  }
+  if (params.get('furniture') === '0') {
+    state.furniture = false;
+    if (furnitureToggle) furnitureToggle.checked = false;
+  }
+
+  // Role tags: tags=THE SIREN|THE DRIVER with optional tagat=2,3 panel list
+  // (without tagat, labels land on panels 1, 2, ... in order)
+  const tagsParam = params.get('tags');
+  if (tagsParam) {
+    const labels = tagsParam.split('|').map(s => s.trim()).filter(Boolean);
+    const atParam = params.get('tagat');
+    const ats = atParam
+      ? atParam.split(',').map(s => parseInt(s, 10))
+      : labels.map((_, i) => i + 1);
+    state.tags = labels
+      .map((label, i) => ({ panel: ats[i], label }))
+      .filter(t => Number.isInteger(t.panel));
+  }
+
   // Load samples first
   await loadSamples();
 
@@ -478,9 +539,12 @@ async function initFromQuery() {
   setStatus('Ready');
 }
 
-// Wait for Anton font to load before rendering
+// Wait for the display fonts to load before rendering
 if (document.fonts && document.fonts.load) {
-  document.fonts.load('1em Anton').then(() => {
+  Promise.all([
+    document.fonts.load('1em Anton'),
+    document.fonts.load('1em "Kaushan Script"')
+  ]).then(() => {
     initFromQuery();
   }).catch(() => {
     initFromQuery();

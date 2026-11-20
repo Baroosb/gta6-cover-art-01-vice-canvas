@@ -180,7 +180,111 @@ export function coverFitSourceRect(imgW, imgH, panelW, panelH, zoom = 1, panX = 
   return { sx: finalSx, sy: finalSy, sw: zoomedW, sh: zoomedH };
 }
 
-export function drawPosterLettering(ctx, w, h, title, subtitle, gradeKey = 'sunset') {
+// Accent colour per grade, shared by the subtitle plate, role tags and seal.
+export const GRADE_ACCENTS = {
+  sunset: '#ff9e3d',
+  neon: '#22d3ee',
+  golden: '#fbbf24',
+  raw: '#e5e7eb'
+};
+
+// Width of a string drawn letter by letter with fixed spacing between glyphs.
+export function spacedTextWidth(ctx, text, spacing) {
+  let width = 0;
+  for (let i = 0; i < text.length; i++) {
+    width += ctx.measureText(text[i]).width + (i < text.length - 1 ? spacing : 0);
+  }
+  return width;
+}
+
+// Draw letterspaced text from a left origin (ctx.textAlign is forced to 'left').
+// Returns the drawn width so callers can centre or plate the text.
+export function drawSpacedText(ctx, text, x, y, spacing) {
+  const prevAlign = ctx.textAlign;
+  ctx.textAlign = 'left';
+  let curX = x;
+  for (let i = 0; i < text.length; i++) {
+    ctx.fillText(text[i], curX, y);
+    curX += ctx.measureText(text[i]).width + spacing;
+  }
+  ctx.textAlign = prevAlign;
+  return curX - x - (text.length ? spacing : 0);
+}
+
+// A five-pointed star path centred on (cx, cy).
+export function starPath(ctx, cx, cy, outerR, innerR, rotation = -Math.PI / 2) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = rotation + (i * Math.PI) / 5;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+/**
+ * Render the title once onto an offscreen canvas with the retro-chrome
+ * treatment: a sunset gradient (pale gold -> gold -> orange -> hot pink)
+ * split by a dark chrome seam, fine horizontal striping across the lower
+ * half and a soft gloss over the top. The caller strokes a heavy dark
+ * outline on the main canvas and lays this on top.
+ */
+export function buildChromeTitle(text, fontSize) {
+  const pad = Math.ceil(fontSize * 0.35);
+  const meas = document.createElement('canvas').getContext('2d');
+  meas.font = `${fontSize}px "Anton", sans-serif`;
+  const textW = meas.measureText(text).width;
+
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(textW + pad * 2);
+  c.height = Math.ceil(fontSize * 1.6);
+  const g = c.getContext('2d');
+  g.font = `${fontSize}px "Anton", sans-serif`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+
+  const top = c.height / 2 - fontSize * 0.5;
+  const bottom = c.height / 2 + fontSize * 0.5;
+  const grad = g.createLinearGradient(0, top, 0, bottom);
+  grad.addColorStop(0, '#fff6c9');
+  grad.addColorStop(0.28, '#ffd23d');
+  grad.addColorStop(0.46, '#ff9e3d');
+  grad.addColorStop(0.495, '#7a2d0e');
+  grad.addColorStop(0.52, '#ff7847');
+  grad.addColorStop(0.74, '#ff2a6d');
+  grad.addColorStop(1, '#d1105a');
+  g.fillStyle = grad;
+  g.fillText(text, c.width / 2, c.height / 2);
+
+  g.globalCompositeOperation = 'source-atop';
+
+  // Retro striping across the lower half of the glyphs.
+  g.fillStyle = 'rgba(70, 0, 24, 0.16)';
+  const stripeH = Math.max(1.5, fontSize * 0.03);
+  const stripeGap = fontSize * 0.105;
+  for (let y = c.height / 2 + fontSize * 0.03; y < bottom + fontSize * 0.08; y += stripeGap) {
+    g.fillRect(0, y, c.width, stripeH);
+  }
+
+  // Soft gloss sheen over the top of the glyphs.
+  const gloss = g.createLinearGradient(0, top, 0, top + fontSize * 0.45);
+  gloss.addColorStop(0, 'rgba(255, 255, 255, 0.38)');
+  gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  g.fillStyle = gloss;
+  g.fillRect(0, top, c.width, fontSize * 0.45);
+
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
+export function drawPosterLettering(ctx, w, h, state) {
+  const title = state.title;
+  const subtitle = state.subtitle;
+  const accent = state.accent;
+  const gradeKey = state.grade || 'sunset';
   if (!title && !subtitle) return;
 
   ctx.save();
@@ -209,6 +313,7 @@ export function drawPosterLettering(ctx, w, h, title, subtitle, gradeKey = 'suns
     ctx.font = `${fontSize}px "Anton", sans-serif`;
     metrics = ctx.measureText(cleanTitle);
   }
+  const titleW = metrics.width;
 
   const titleX = w / 2;
   const titleY = bannerY + Math.round(bannerH * 0.52);
@@ -216,25 +321,59 @@ export function drawPosterLettering(ctx, w, h, title, subtitle, gradeKey = 'suns
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Hard shadow & outline
+  // Heavy dark outline with a hard offset shadow, stroked twice so the
+  // rim stays solid where the chrome fill will sit on top of it.
   ctx.shadowColor = 'rgba(0, 0, 0, 1)';
   ctx.shadowBlur = 0;
   const shadowOffset = Math.max(1, Math.round(fontSize / 20));
   ctx.shadowOffsetX = shadowOffset;
   ctx.shadowOffsetY = shadowOffset;
 
-  ctx.lineWidth = Math.max(3, Math.round(fontSize / 14));
-  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = Math.max(4, Math.round(fontSize / 8));
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#160409';
+  ctx.strokeText(cleanTitle, titleX, titleY);
   ctx.strokeText(cleanTitle, titleX, titleY);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(cleanTitle, titleX, titleY);
-
-  // Reset shadow for subtitle plate
+  // Sunset-chrome fill, pre-rendered with its striping and gloss.
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
+  const chrome = buildChromeTitle(cleanTitle, fontSize);
+  ctx.drawImage(chrome, titleX - chrome.width / 2, titleY - chrome.height / 2);
+
+  // Script accent word, signed across the top-left of the title.
+  if (accent) {
+    const accentSize = Math.round(fontSize * 0.44);
+    ctx.font = `${accentSize}px "Kaushan Script", cursive`;
+    const accentW = ctx.measureText(accent).width;
+    const accentX = titleX - titleW / 2 + accentW * 0.34;
+    const accentY = titleY - Math.round(fontSize * 0.60);
+
+    ctx.save();
+    ctx.translate(accentX, accentY);
+    ctx.rotate(-0.07);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = Math.max(1, Math.round(accentSize / 22));
+    ctx.shadowOffsetY = Math.max(1, Math.round(accentSize / 22));
+    ctx.lineWidth = Math.max(2, Math.round(accentSize / 13));
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#160409';
+    ctx.strokeText(accent, 0, 0);
+    const accentGrad = ctx.createLinearGradient(0, -accentSize / 2, 0, accentSize / 2);
+    accentGrad.addColorStop(0, '#fff3b0');
+    accentGrad.addColorStop(0.55, '#ffb703');
+    accentGrad.addColorStop(1, '#ff5e62');
+    ctx.fillStyle = accentGrad;
+    ctx.fillText(accent, 0, 0);
+    ctx.restore();
+
+    ctx.font = `${fontSize}px "Anton", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+  }
 
   // Subtitle on solid black plate with accent bar
   if (subtitle) {
@@ -262,13 +401,7 @@ export function drawPosterLettering(ctx, w, h, title, subtitle, gradeKey = 'suns
     ctx.fillRect(plateX, plateY, plateW, plateH);
 
     // 4px accent-colour bar on plate's left edge
-    const accentColors = {
-      sunset: '#ff9e3d',
-      neon: '#22d3ee',
-      golden: '#fbbf24',
-      raw: '#e5e7eb'
-    };
-    const accentColor = accentColors[gradeKey] || '#ff9e3d';
+    const accentColor = GRADE_ACCENTS[gradeKey] || '#ff9e3d';
     ctx.fillStyle = accentColor;
     ctx.fillRect(plateX, plateY, 4, plateH);
 
@@ -303,6 +436,279 @@ export function addFilmGrain(ctx, w, h, intensity = 0.02) {
   }
 
   ctx.putImageData(imgData, 0, 0);
+  ctx.restore();
+}
+
+/**
+ * Breakout hero: the first panel's photo is redrawn larger, spilling over
+ * its inner edge onto the neighbouring panels with a slanted far edge, a
+ * white keyline border and a drop shadow — the pop-out poster treatment.
+ * Applies to the poster layout and to duo (stacked or side by side).
+ */
+export function drawBreakoutHero(ctx, state, panels, keylineWidth) {
+  if (state.spread || state.breakout === false) return;
+  if (state.layout !== 'poster' && state.layout !== 'duo') return;
+
+  const hero = panels[0];
+  const photos = state.photos || [];
+  if (!hero || photos.length === 0) return;
+
+  const panelState = state.panelStates && state.panelStates[0]
+    ? state.panelStates[0]
+    : { photoIdx: 0, zoom: 1, panX: 0, panY: 0 };
+  const img = photos[(panelState.photoIdx || 0) % photos.length];
+  if (!img || !img.complete || !img.naturalWidth) return;
+
+  const { width: w, height: h } = ctx.canvas;
+  const stacked = state.layout === 'poster' || hero.w >= w - 1;
+  let pts;
+  let bbox;
+  if (stacked) {
+    const over = Math.round(hero.h * 0.17);
+    pts = [
+      [hero.x, hero.y],
+      [hero.x + hero.w, hero.y],
+      [hero.x + hero.w, hero.y + hero.h + Math.round(over * 0.4)],
+      [hero.x, hero.y + hero.h + over]
+    ];
+    bbox = { x: hero.x, y: hero.y, w: hero.w, h: hero.h + over };
+  } else {
+    const over = Math.round(hero.w * 0.15);
+    pts = [
+      [hero.x, hero.y],
+      [hero.x + hero.w + over, hero.y],
+      [hero.x + hero.w + Math.round(over * 0.4), hero.y + hero.h],
+      [hero.x, hero.y + hero.h]
+    ];
+    bbox = { x: hero.x, y: hero.y, w: hero.w + over, h: hero.h };
+  }
+
+  const tracePath = () => {
+    ctx.beginPath();
+    pts.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+    ctx.closePath();
+  };
+
+  // Shadow pass: a filled silhouette casts the drop shadow.
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  ctx.shadowBlur = Math.round(w * 0.018);
+  ctx.shadowOffsetY = Math.round(w * 0.007);
+  tracePath();
+  ctx.fillStyle = '#000000';
+  ctx.fill();
+  ctx.restore();
+
+  // The hero photo, cover-fitted to the breakout's bounding box.
+  ctx.save();
+  tracePath();
+  ctx.clip();
+  ctx.fillStyle = '#111';
+  ctx.fillRect(bbox.x, bbox.y, bbox.w, bbox.h);
+  const recipe = GRADE_RECIPES[state.grade] || GRADE_RECIPES.sunset;
+  const rect = coverFitSourceRect(
+    img.naturalWidth,
+    img.naturalHeight,
+    bbox.w,
+    bbox.h,
+    panelState.zoom || 1,
+    panelState.panX || 0,
+    panelState.panY || 0
+  );
+  ctx.filter = recipe.filter;
+  ctx.drawImage(img, rect.sx, rect.sy, rect.sw, rect.sh, bbox.x, bbox.y, bbox.w, bbox.h);
+  ctx.restore();
+
+  // Keyline border: dark outer rim, then the white keyline.
+  ctx.save();
+  tracePath();
+  ctx.lineWidth = keylineWidth * 1.5 + 3;
+  ctx.strokeStyle = 'rgba(10, 4, 8, 0.85)';
+  ctx.stroke();
+  tracePath();
+  ctx.lineWidth = keylineWidth * 1.5;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Cast/role tags: small tilted plates pinned to the lower-left of a panel
+ * ("THE DRIVER", "THE SIREN"). state.tags is a list of {panel, label};
+ * when unset, the poster layout tags its two character panels.
+ */
+export function drawRoleTags(ctx, state, panels) {
+  let tags = state.tags;
+  if (!tags) {
+    tags = state.layout === 'poster'
+      ? [
+          { panel: 1, label: 'THE DRIVER' },
+          { panel: 2, label: 'THE SIREN' }
+        ]
+      : [];
+  }
+  if (!tags.length) return;
+
+  const { width: w, height: h } = ctx.canvas;
+  const accentColor = GRADE_ACCENTS[state.grade] || '#ff9e3d';
+  const fontSize = Math.max(12, Math.round(Math.min(w, h) * 0.024));
+
+  for (const tag of tags) {
+    const panel = panels[tag.panel];
+    if (!panel || !tag.label) continue;
+
+    ctx.save();
+    ctx.font = `${fontSize}px "Anton", sans-serif`;
+    ctx.textBaseline = 'middle';
+    const spacing = Math.round(fontSize * 0.14);
+    const textW = spacedTextWidth(ctx, tag.label, spacing);
+    const plateW = Math.ceil(textW + fontSize * 1.15);
+    const plateH = Math.round(fontSize * 1.55);
+    const px = panel.x + Math.round(w * 0.012) + 4;
+    // Panels that end at the canvas's bottom edge share that band with the
+    // billing block, so their tags ride above it instead of colliding.
+    const atCanvasBottom = panel.y + panel.h >= h - 2;
+    const lift = atCanvasBottom && state.furniture !== false ? Math.round(h * 0.088) : 0;
+    const py = panel.y + panel.h - plateH - Math.round(h * 0.014) - 4 - lift;
+    if (plateW > panel.w - 8) {
+      ctx.restore();
+      continue;
+    }
+
+    ctx.translate(px + plateW / 2, py + plateH / 2);
+    ctx.rotate(-0.03);
+    ctx.translate(-plateW / 2, -plateH / 2);
+
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = Math.round(fontSize * 0.35);
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = 'rgba(8, 4, 10, 0.9)';
+    ctx.fillRect(0, 0, plateW, plateH);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(0, 0, 4, plateH);
+    ctx.fillStyle = '#ffffff';
+    drawSpacedText(ctx, tag.label, 4 + fontSize * 0.38, plateH / 2 + 1, spacing);
+    ctx.restore();
+  }
+}
+
+/**
+ * The circular seal: a gold-rimmed badge in the lower-right with the
+ * studio name curved around a star. Static text, drawn fresh each render.
+ */
+export function drawSeal(ctx, w, h, gradeKey = 'sunset') {
+  const r = Math.round(Math.min(w, h) * 0.082);
+  if (r < 26) return;
+  const cx = w - r - Math.round(w * 0.02);
+  const cy = h - r - Math.round(h * 0.075);
+  const accentColor = GRADE_ACCENTS[gradeKey] || '#ff9e3d';
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.1);
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  ctx.shadowBlur = Math.round(r * 0.22);
+  ctx.shadowOffsetY = Math.round(r * 0.06);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#12060d';
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Gold rim and inner disc.
+  ctx.lineWidth = Math.max(2, Math.round(r * 0.05));
+  ctx.strokeStyle = '#ffd23d';
+  ctx.beginPath();
+  ctx.arc(0, 0, r - ctx.lineWidth / 2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(24, 8, 18, 0.95)';
+  ctx.fill();
+  ctx.lineWidth = Math.max(1, Math.round(r * 0.025));
+  ctx.strokeStyle = accentColor;
+  ctx.stroke();
+
+  // Curved studio text around the band.
+  const ringText = 'VICE CANVAS ★ ORIGINAL COVER ART ★ ';
+  const bandFont = Math.round(r * 0.225);
+  ctx.font = `${bandFont}px "Anton", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffd23d';
+  const textRadius = r * 0.845;
+  const step = (Math.PI * 2) / ringText.length;
+  for (let i = 0; i < ringText.length; i++) {
+    ctx.save();
+    ctx.rotate(-Math.PI / 2 + i * step);
+    ctx.translate(0, -textRadius);
+    ctx.fillText(ringText[i], 0, 0);
+    ctx.restore();
+  }
+
+  // Star and year in the middle.
+  starPath(ctx, 0, -r * 0.14, r * 0.3, r * 0.135);
+  ctx.fillStyle = '#ffd23d';
+  ctx.fill();
+  ctx.font = `${Math.round(r * 0.17)}px "Anton", sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('EST. 2026', 0, r * 0.36);
+
+  ctx.restore();
+}
+
+/**
+ * The movie-poster billing block: two lines of tiny letterspaced credits
+ * along the bottom edge, over a soft dark strip so they stay legible.
+ */
+export function drawBillingBlock(ctx, w, h, state) {
+  const title = (state.title || 'UNTITLED').toUpperCase();
+  const lines = [
+    `VICE CANVAS PICTURES PRESENTS A VESPER BAY STORY "${title}" STARRING THE DRIVER AND THE SIREN`,
+    'MUSIC BY THE NEON PALMS · COSTUMES CHROME & GRAIN · EDITED BY A. CUTTER · MADE WITH VICE CANVAS'
+  ];
+
+  ctx.save();
+  const stripH = Math.round(h * 0.085);
+  const stripGrad = ctx.createLinearGradient(0, h - stripH, 0, h);
+  stripGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  stripGrad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+  ctx.fillStyle = stripGrad;
+  ctx.fillRect(0, h - stripH, w, stripH);
+
+  let fontSize = Math.max(10, Math.round(w * 0.0115));
+  ctx.textBaseline = 'middle';
+  const spacingFor = (fs) => Math.max(1, Math.round(fs * 0.12));
+  const fitFont = (text) => {
+    let fs = fontSize;
+    ctx.font = `${fs}px "Anton", sans-serif`;
+    while (spacedTextWidth(ctx, text, spacingFor(fs)) > w * 0.96 && fs > 8) {
+      fs -= 1;
+      ctx.font = `${fs}px "Anton", sans-serif`;
+    }
+    return fs;
+  };
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+  ctx.shadowBlur = 2;
+
+  const lineGap = Math.round(fontSize * 1.45);
+  const lastLineY = h - Math.round(h * 0.016) - Math.round(fontSize * 0.5);
+  lines.forEach((line, i) => {
+    const fs = fitFont(line);
+    const y = lastLineY - (lines.length - 1 - i) * lineGap;
+    const lineW = spacedTextWidth(ctx, line, spacingFor(fs));
+    drawSpacedText(ctx, line, (w - lineW) / 2, y, spacingFor(fs));
+  });
+
   ctx.restore();
 }
 
@@ -381,6 +787,9 @@ export function drawCover(ctx, state) {
   }
   ctx.restore();
 
+  // Breakout hero panel pops over the grid before the grade unifies it.
+  drawBreakoutHero(ctx, state, panels, keylineWidth);
+
   // 2. Apply colour grade overlay (Edge grade)
   applyColourGrade(ctx, w, h, state.grade);
 
@@ -396,6 +805,15 @@ export function drawCover(ctx, state) {
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  // 4. Poster Lettering (Title & Subtitle)
-  drawPosterLettering(ctx, w, h, state.title, state.subtitle, state.grade);
+  // Cast/role tags on the character panels
+  drawRoleTags(ctx, state, panels);
+
+  // 4. Poster Lettering (chrome title, script accent, subtitle plate)
+  drawPosterLettering(ctx, w, h, state);
+
+  // 5. Poster furniture: circular seal + billing block
+  if (state.furniture !== false) {
+    drawSeal(ctx, w, h, state.grade);
+    drawBillingBlock(ctx, w, h, state);
+  }
 }
