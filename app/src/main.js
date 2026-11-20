@@ -6,7 +6,11 @@ const SAMPLE_FILES = [
   'boulevard-car.jpg',
   'neon-man.jpg',
   'neon-woman.jpg',
-  'pier-sunset.jpg'
+  'pier-sunset.jpg',
+  'speedboat-bay.jpg',
+  'heli-searchlight.jpg',
+  'causeway-chase.jpg',
+  'deco-boulevard.jpg'
 ];
 
 // App State
@@ -17,7 +21,11 @@ const state = {
     { photoIdx: 0, zoom: 1, panX: 0, panY: 0 },
     { photoIdx: 1, zoom: 1, panX: 0, panY: 0 },
     { photoIdx: 2, zoom: 1, panX: 0, panY: 0 },
-    { photoIdx: 3, zoom: 1, panX: 0, panY: 0 }
+    { photoIdx: 3, zoom: 1, panX: 0, panY: 0 },
+    { photoIdx: 4, zoom: 1, panX: 0, panY: 0 },
+    { photoIdx: 5, zoom: 1, panX: 0, panY: 0 },
+    { photoIdx: 6, zoom: 1, panX: 0, panY: 0 },
+    { photoIdx: 7, zoom: 1, panX: 0, panY: 0 }
   ],
   selectedPanel: 0,
   layout: 'poster',
@@ -30,6 +38,7 @@ const state = {
   title: 'VICE HEAT',
   subtitle: 'ONE CITY, FOUR STORIES',
   accent: 'Sunset City',
+  captionFx: 'none',
   breakout: true,
   furniture: true,
   tags: null,
@@ -47,6 +56,7 @@ const sizeButtons = document.querySelectorAll('#size-buttons .ctrl-btn');
 const titleInput = document.getElementById('title-input');
 const subtitleInput = document.getElementById('subtitle-input');
 const accentInput = document.getElementById('accent-input');
+const captionFxSelect = document.getElementById('caption-fx');
 const breakoutToggle = document.getElementById('breakout-toggle');
 const furnitureToggle = document.getElementById('furniture-toggle');
 const spreadToggle = document.getElementById('spread-toggle');
@@ -273,11 +283,18 @@ layoutButtons.forEach(btn => {
     layoutButtons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.layout = btn.getAttribute('data-layout');
-    // Ensure panelStates has enough entries
+    // Ensure panelStates has enough entries; new panels cycle the loaded
+    // photos so a bigger layout never opens with empty slots.
     const layoutFn = PANEL_LAYOUTS[state.layout] || PANEL_LAYOUTS.poster;
     const count = layoutFn(state.width, state.height).length;
     while (state.panelStates.length < count) {
-      state.panelStates.push({ photoIdx: 0, zoom: 1, panX: 0, panY: 0 });
+      const idx = state.panelStates.length;
+      state.panelStates.push({
+        photoIdx: state.photos.length ? idx % state.photos.length : idx,
+        zoom: 1,
+        panX: 0,
+        panY: 0
+      });
     }
     if (state.selectedPanel >= count) state.selectedPanel = 0;
     render();
@@ -324,6 +341,14 @@ if (accentInput) {
   accentInput.addEventListener('input', () => {
     state.accent = accentInput.value;
     render();
+  });
+}
+
+if (captionFxSelect) {
+  captionFxSelect.addEventListener('change', () => {
+    state.captionFx = captionFxSelect.value;
+    render();
+    setStatus(`Caption FX: ${captionFxSelect.options[captionFxSelect.selectedIndex].text}`);
   });
 }
 
@@ -452,6 +477,13 @@ async function initFromQuery() {
     if (accentInput) accentInput.value = accentParam;
   }
 
+  // Caption FX via query: fx=none|outline|glow
+  const fxParam = params.get('fx');
+  if (fxParam && ['none', 'outline', 'glow'].includes(fxParam)) {
+    state.captionFx = fxParam;
+    if (captionFxSelect) captionFxSelect.value = fxParam;
+  }
+
   // Poster style switches: breakout=0 / furniture=0 turn them off
   if (params.get('breakout') === '0') {
     state.breakout = false;
@@ -511,6 +543,25 @@ async function initFromQuery() {
         state.panelStates[i].zoom = Math.max(1, Math.min(3, z));
       }
     });
+  }
+  // Per-panel pan via query: pans=x0,y0,x1,y1,... flat panX/panY pairs in
+  // the same panel order (values are the editor's pan units, -1..1 typical;
+  // larger values simply clamp at the photo's edge in the fit math).
+  const pansParam = params.get('pans');
+  if (pansParam) {
+    const vals = pansParam.split(',').map(s => parseFloat(s));
+    for (let i = 0; i + 1 < vals.length; i += 2) {
+      const panelIdx = i / 2;
+      const px = vals[i];
+      const py = vals[i + 1];
+      if (Number.isNaN(px) || Number.isNaN(py)) continue;
+      if (!state.panelStates[panelIdx]) {
+        state.panelStates[panelIdx] = { photoIdx: panelIdx, zoom: 1, panX: px, panY: py };
+      } else {
+        state.panelStates[panelIdx].panX = px;
+        state.panelStates[panelIdx].panY = py;
+      }
+    }
   }
 
   // Spread mode via query: spread=<photo index> lays one photo across the

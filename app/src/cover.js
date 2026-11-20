@@ -10,6 +10,24 @@ export const PANEL_LAYOUTS = {
     const x2 = Math.round((2 * w) / 3);
     const x3 = w;
 
+    if (isPortrait) {
+      // Portrait poster: a full-height character column on the left and two
+      // stacked landscape bands on the right, so a wide photo (the car)
+      // gets a band it can fill nose-to-tail instead of a narrow column
+      // that crops it to a front clip.
+      const midY = heroH + Math.round(bottomH / 2);
+      return [
+        // Hero top panel
+        { x: 0, y: 0, w: w, h: heroH },
+        // Character column, full bottom height
+        { x: x0, y: heroH, w: x1 - x0, h: bottomH },
+        // Wide band, upper right
+        { x: x1, y: heroH, w: x3 - x1, h: midY - heroH },
+        // Wide band, lower right
+        { x: x1, y: midY, w: x3 - x1, h: h - midY }
+      ];
+    }
+
     return [
       // Hero top panel
       { x: 0, y: 0, w: w, h: heroH },
@@ -77,6 +95,52 @@ export const PANEL_LAYOUTS = {
       }
     }
     return panels;
+  },
+
+  trio: (w, h) => {
+    // Three full-height vertical panels side by side.
+    const panels = [];
+    for (let c = 0; c < 3; c++) {
+      const x0 = Math.round((c * w) / 3);
+      const x1 = Math.round(((c + 1) * w) / 3);
+      panels.push({ x: x0, y: 0, w: x1 - x0, h });
+    }
+    return panels;
+  },
+
+  split: (w, h) => {
+    // One large hero panel on the left, two panels stacked on the right.
+    const leftW = Math.round(w * 0.58);
+    const midY = Math.round(h / 2);
+    return [
+      { x: 0, y: 0, w: leftW, h },
+      { x: leftW, y: 0, w: w - leftW, h: midY },
+      { x: leftW, y: midY, w: w - leftW, h: h - midY }
+    ];
+  },
+
+  collage8: (w, h) => {
+    // Eight-panel collage: 4 x 2 on landscape and square canvases,
+    // 2 x 4 on portrait ones so no panel turns into a sliver.
+    const portrait = h > w;
+    const cols = portrait ? 2 : 4;
+    const rows = portrait ? 4 : 2;
+    const panels = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x0 = Math.round((c * w) / cols);
+        const x1 = Math.round(((c + 1) * w) / cols);
+        const y0 = Math.round((r * h) / rows);
+        const y1 = Math.round(((r + 1) * h) / rows);
+        panels.push({
+          x: x0,
+          y: y0,
+          w: x1 - x0,
+          h: y1 - y0
+        });
+      }
+    }
+    return panels;
   }
 };
 
@@ -124,6 +188,45 @@ export const GRADE_RECIPES = {
     name: 'Raw Print',
     filter: 'none',
     overlay: () => {}
+  },
+  midnight: {
+    name: 'Midnight Palms',
+    filter: 'saturate(1.1) contrast(1.07) brightness(0.94)',
+    overlay: (ctx, w, h) => {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(4, 80, 92, 0.22)');
+      grad.addColorStop(0.3, 'rgba(4, 80, 92, 0)');
+      grad.addColorStop(0.85, 'rgba(255, 0, 128, 0)');
+      grad.addColorStop(1, 'rgba(255, 0, 128, 0.2)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+  },
+  chromeheat: {
+    name: 'Chrome Heat',
+    filter: 'saturate(1.18) contrast(1.08) brightness(1.02)',
+    overlay: (ctx, w, h) => {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(255, 60, 0, 0.2)');
+      grad.addColorStop(0.2, 'rgba(255, 60, 0, 0)');
+      grad.addColorStop(0.85, 'rgba(214, 0, 0, 0)');
+      grad.addColorStop(1, 'rgba(214, 0, 0, 0.22)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+  },
+  vapor: {
+    name: 'Vapor Dawn',
+    filter: 'saturate(0.96) contrast(0.98) brightness(1.06)',
+    overlay: (ctx, w, h) => {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, 'rgba(255, 183, 197, 0.2)');
+      grad.addColorStop(0.25, 'rgba(255, 183, 197, 0)');
+      grad.addColorStop(0.8, 'rgba(103, 232, 249, 0)');
+      grad.addColorStop(1, 'rgba(103, 232, 249, 0.2)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 };
 
@@ -185,7 +288,10 @@ export const GRADE_ACCENTS = {
   sunset: '#ff9e3d',
   neon: '#22d3ee',
   golden: '#fbbf24',
-  raw: '#e5e7eb'
+  raw: '#e5e7eb',
+  midnight: '#ff4d9d',
+  chromeheat: '#ff6d1f',
+  vapor: '#f9a8d4'
 };
 
 // Width of a string drawn letter by letter with fixed spacing between glyphs.
@@ -285,6 +391,10 @@ export function drawPosterLettering(ctx, w, h, state) {
   const subtitle = state.subtitle;
   const accent = state.accent;
   const gradeKey = state.grade || 'sunset';
+  // Caption FX: 'none' | 'outline' | 'glow', applied to the title, the
+  // script accent and the subtitle plate in the grade's accent colour.
+  const fx = state.captionFx || 'none';
+  const fxAccent = GRADE_ACCENTS[gradeKey] || '#ff9e3d';
   if (!title && !subtitle) return;
 
   ctx.save();
@@ -341,7 +451,32 @@ export function drawPosterLettering(ctx, w, h, state) {
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
   const chrome = buildChromeTitle(cleanTitle, fontSize);
-  ctx.drawImage(chrome, titleX - chrome.width / 2, titleY - chrome.height / 2);
+  const chromeX = titleX - chrome.width / 2;
+  const chromeY = titleY - chrome.height / 2;
+
+  // Caption FX "glow": a halo of accent light behind the chrome letters,
+  // laid down by drawing the pre-rendered title with a soft shadow.
+  if (fx === 'glow') {
+    ctx.save();
+    ctx.shadowColor = fxAccent;
+    ctx.shadowBlur = Math.round(fontSize * 0.45);
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.drawImage(chrome, chromeX, chromeY);
+    ctx.drawImage(chrome, chromeX, chromeY);
+    ctx.restore();
+  }
+  ctx.drawImage(chrome, chromeX, chromeY);
+
+  // Caption FX "outline": a bright accent rim traced over the chrome.
+  if (fx === 'outline') {
+    ctx.save();
+    ctx.lineWidth = Math.max(2, Math.round(fontSize / 22));
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = fxAccent;
+    ctx.strokeText(cleanTitle, titleX, titleY);
+    ctx.restore();
+  }
 
   // Script accent word, signed across the top-left of the title.
   if (accent) {
@@ -368,6 +503,25 @@ export function drawPosterLettering(ctx, w, h, state) {
     accentGrad.addColorStop(1, '#ff5e62');
     ctx.fillStyle = accentGrad;
     ctx.fillText(accent, 0, 0);
+
+    // Caption FX on the script accent: an accent rim, or a halo redrawn
+    // over the gradient fill.
+    if (fx === 'outline') {
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.lineWidth = Math.max(1.5, Math.round(accentSize / 18));
+      ctx.strokeStyle = fxAccent;
+      ctx.strokeText(accent, 0, 0);
+    } else if (fx === 'glow') {
+      ctx.shadowColor = fxAccent;
+      ctx.shadowBlur = Math.round(accentSize * 0.55);
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.fillText(accent, 0, 0);
+      ctx.fillText(accent, 0, 0);
+    }
     ctx.restore();
 
     ctx.font = `${fontSize}px "Anton", sans-serif`;
@@ -396,14 +550,35 @@ export function drawPosterLettering(ctx, w, h, state) {
     const plateX = titleX - plateW / 2;
     const plateY = subY - plateH / 2;
 
-    // Solid black plate
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(plateX, plateY, plateW, plateH);
+    // Solid black plate; the glow FX lights it from behind in the accent.
+    const accentColor = GRADE_ACCENTS[gradeKey] || '#ff9e3d';
+    if (fx === 'glow') {
+      ctx.save();
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = Math.round(subFontSize * 0.9);
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(plateX, plateY, plateW, plateH);
+      ctx.fillRect(plateX, plateY, plateW, plateH);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(plateX, plateY, plateW, plateH);
+    }
 
     // 4px accent-colour bar on plate's left edge
-    const accentColor = GRADE_ACCENTS[gradeKey] || '#ff9e3d';
     ctx.fillStyle = accentColor;
     ctx.fillRect(plateX, plateY, 4, plateH);
+
+    // Caption FX "outline": the plate is framed in the accent colour.
+    if (fx === 'outline') {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = accentColor;
+      ctx.strokeRect(plateX + 1, plateY + 1, plateW - 2, plateH - 2);
+      ctx.restore();
+    }
 
     // Subtitle text in white letterspaced uppercase
     ctx.fillStyle = '#ffffff';
@@ -443,11 +618,12 @@ export function addFilmGrain(ctx, w, h, intensity = 0.02) {
  * Breakout hero: the first panel's photo is redrawn larger, spilling over
  * its inner edge onto the neighbouring panels with a slanted far edge, a
  * white keyline border and a drop shadow — the pop-out poster treatment.
- * Applies to the poster layout and to duo (stacked or side by side).
+ * Applies to the poster layout, to duo (stacked or side by side) and to
+ * split, whose full-height left hero spills onto the two stacked panels.
  */
 export function drawBreakoutHero(ctx, state, panels, keylineWidth) {
   if (state.spread || state.breakout === false) return;
-  if (state.layout !== 'poster' && state.layout !== 'duo') return;
+  if (state.layout !== 'poster' && state.layout !== 'duo' && state.layout !== 'split') return;
 
   const hero = panels[0];
   const photos = state.photos || [];
