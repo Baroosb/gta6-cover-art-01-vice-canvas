@@ -408,6 +408,13 @@ async function initFromQuery() {
     if (titleInput) titleInput.value = captionParam;
   }
 
+  // Subtitle
+  const subParam = params.get('sub');
+  if (subParam) {
+    state.subtitle = subParam;
+    if (subtitleInput) subtitleInput.value = subParam;
+  }
+
   // Load samples first
   await loadSamples();
 
@@ -417,6 +424,50 @@ async function initFromQuery() {
     const idx = state.photoNames.findIndex(n => n.includes(photoParam));
     if (idx !== -1) {
       state.panelStates[0].photoIdx = idx;
+    }
+  }
+
+  // Per-panel composition via query (deep-linkable covers):
+  //   panels=2,3,0,1  photo index assigned to each panel, in panel order
+  //   zooms=1.25,1,1.1  per-panel zoom, matched to the same panel order
+  const panelsParam = params.get('panels');
+  if (panelsParam) {
+    panelsParam.split(',').forEach((value, i) => {
+      const idx = parseInt(value, 10);
+      if (Number.isNaN(idx)) return;
+      if (!state.panelStates[i]) {
+        state.panelStates[i] = { photoIdx: idx, zoom: 1, panX: 0, panY: 0 };
+      } else {
+        state.panelStates[i].photoIdx = idx;
+      }
+    });
+  }
+  const zoomsParam = params.get('zooms');
+  if (zoomsParam) {
+    zoomsParam.split(',').forEach((value, i) => {
+      const z = parseFloat(value);
+      if (!Number.isNaN(z) && state.panelStates[i]) {
+        state.panelStates[i].zoom = Math.max(1, Math.min(3, z));
+      }
+    });
+  }
+
+  // Spread mode via query: spread=<photo index> lays one photo across the
+  // whole canvas; spreadzoom=<1..3> frames it.
+  const spreadParam = params.get('spread');
+  if (spreadParam !== null && spreadParam !== '') {
+    const idx = parseInt(spreadParam, 10);
+    if (!Number.isNaN(idx)) {
+      state.spread = true;
+      state.spreadPhotoIdx = idx;
+      if (spreadToggle) spreadToggle.checked = true;
+    }
+  }
+  const spreadZoomParam = params.get('spreadzoom');
+  if (spreadZoomParam) {
+    const z = parseFloat(spreadZoomParam);
+    if (!Number.isNaN(z)) {
+      state.spreadZoom = Math.max(1, Math.min(3, z));
     }
   }
 
